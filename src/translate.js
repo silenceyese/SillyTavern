@@ -251,7 +251,7 @@ function registerEndpoints(app, jsonParser) {
         let lang = request.body.lang;
 
         if (request.body.lang === 'zh-CN') {
-            lang = 'zh-Hans'
+            lang = 'zh-Hans';
         }
 
         if (!text || !lang) {
@@ -260,13 +260,38 @@ function registerEndpoints(app, jsonParser) {
 
         console.log('Input text: ' + text);
 
-        bingTranslateApi.translate(text, null, lang).then(result => {
-            console.log('Translated text: ' + result.translation);
-            return response.send(result.translation);
-        }).catch(err => {
-            console.log("Translation error: " + err.message);
-            return response.sendStatus(500);
-        });
+        if (text.length > 1000) {
+            const textChunks = text.split('\n'); // Split text by newline
+
+            const translations = [];
+
+            for (const chunk of textChunks) {
+                if (chunk.length > 0) {
+                    try {
+                        const result = await bingTranslateApi.translate(chunk, null, lang);
+                        console.log('Translated text: ' + result.translation);
+                        translations.push(result.translation);
+                        // 停顿一秒
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    } catch (err) {
+                        console.log("Translation error: " + err.message);
+                        return response.sendStatus(500);
+                    }
+                }
+            }
+
+            const translatedText = translations.join('\n'); // Concatenate translated chunks with newline
+            console.log('Translated text: ' + translatedText);
+            return response.send(translatedText);
+        } else {
+            bingTranslateApi.translate(text, null, lang).then(result => {
+                console.log('Translated text: ' + result.translation);
+                return response.send(result.translation);
+            }).catch(err => {
+                console.log("Translation error: " + err.message);
+                return response.sendStatus(500);
+            });
+        }
     });
 }
 
